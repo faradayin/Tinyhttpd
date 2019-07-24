@@ -61,7 +61,7 @@ void accept_request(void *arg)
     char url[255];
     char path[512];
     size_t i, j;
-    struct stat st;
+    struct stat st;//文件i-node信息结构体
     int cgi = 0;      /* becomes true if server decides this is a CGI
                        * program */
     char *query_string = NULL;
@@ -82,7 +82,7 @@ void accept_request(void *arg)
         return;
     }
 
-    if (strcasecmp(method, "POST") == 0)
+    if (strcasecmp(method, "POST") == 0)//如果client使用了POST方法，运行CGI脚本
         cgi = 1;
 
     i = 0;
@@ -93,25 +93,25 @@ void accept_request(void *arg)
         url[i] = buf[j];
         i++; j++;
     }
-    url[i] = '\0';
+    url[i] = '\0';//从报文中取出url
 
-    if (strcasecmp(method, "GET") == 0)
+    if (strcasecmp(method, "GET") == 0)//如果client使用了GET方法，
     {
-        query_string = url;
+        query_string = url;//？？？
         while ((*query_string != '?') && (*query_string != '\0'))
             query_string++;
         if (*query_string == '?')
         {
-            cgi = 1;
+            cgi = 1;//运行CGI脚本
             *query_string = '\0';
             query_string++;
         }
     }
 
-    sprintf(path, "htdocs%s", url);
+    sprintf(path, "htdocs%s", url);//文件路径
     if (path[strlen(path) - 1] == '/')
         strcat(path, "index.html");
-    if (stat(path, &st) == -1) {
+    if (stat(path, &st) == -1) {//stat系统调用，文件是否存在
         while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */
             numchars = get_line(client, buf, sizeof(buf));
         not_found(client);
@@ -125,7 +125,7 @@ void accept_request(void *arg)
                 (st.st_mode & S_IXOTH)    )
             cgi = 1;
         if (!cgi)
-            serve_file(client, path);
+            serve_file(client, path);//直接给client发送文件
         else
             execute_cgi(client, path, method, query_string);
     }
@@ -221,7 +221,7 @@ void execute_cgi(int client, const char *path,
     int content_length = -1;
 
     buf[0] = 'A'; buf[1] = '\0';
-    if (strcasecmp(method, "GET") == 0)
+    if (strcasecmp(method, "GET") == 0)// client使用了GET方法
         while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */
             numchars = get_line(client, buf, sizeof(buf));
     else if (strcasecmp(method, "POST") == 0) /*POST*/
@@ -259,7 +259,7 @@ void execute_cgi(int client, const char *path,
     }
     sprintf(buf, "HTTP/1.0 200 OK\r\n");
     send(client, buf, strlen(buf), 0);
-    if (pid == 0)  /* child: CGI script */
+    if (pid == 0)  /* child: CGI script *///子进程
     {
         char meth_env[255];
         char query_env[255];
@@ -273,13 +273,13 @@ void execute_cgi(int client, const char *path,
         putenv(meth_env);
         if (strcasecmp(method, "GET") == 0) {
             sprintf(query_env, "QUERY_STRING=%s", query_string);
-            putenv(query_env);
+            putenv(query_env);//设置环境变量
         }
         else {   /* POST */
             sprintf(length_env, "CONTENT_LENGTH=%d", content_length);
-            putenv(length_env);
+            putenv(length_env);//设置环境变量
         }
-        execl(path, NULL);
+        execl(path, NULL);//用 execl 运行 cgi 程序
         exit(0);
     } else {    /* parent */
         close(cgi_output[1]);
@@ -432,10 +432,10 @@ int startup(u_short *port)
     int on = 1;
     struct sockaddr_in name;
 
-    httpd = socket(PF_INET, SOCK_STREAM, 0);
+    httpd = socket(PF_INET, SOCK_STREAM, 0);// socket()返回文件描述符
     if (httpd == -1)
         error_die("socket");
-    memset(&name, 0, sizeof(name));
+    memset(&name, 0, sizeof(name));// memset 用字符0填充name
     name.sin_family = AF_INET;
     name.sin_port = htons(*port);
     name.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -443,7 +443,7 @@ int startup(u_short *port)
     {  
         error_die("setsockopt failed");
     }
-    if (bind(httpd, (struct sockaddr *)&name, sizeof(name)) < 0)
+    if (bind(httpd, (struct sockaddr *)&name, sizeof(name)) < 0)//Give the socket FD the local address ADDR
         error_die("bind");
     if (*port == 0)  /* if dynamically allocating a port */
     {
@@ -452,7 +452,7 @@ int startup(u_short *port)
             error_die("getsockname");
         *port = ntohs(name.sin_port);
     }
-    if (listen(httpd, 5) < 0)
+    if (listen(httpd, 5) < 0)//监听，N connection requests will be queued before further requests are refused
         error_die("listen");
     return(httpd);
 }
@@ -488,26 +488,26 @@ void unimplemented(int client)
 
 int main(void)
 {
-    int server_sock = -1;
-    u_short port = 4000;
-    int client_sock = -1;
+    int server_sock = -1;// 文件描述符
+    u_short port = 4000;// port 端口号是一个16位无符号整数
+    int client_sock = -1;// 文件描述符
     struct sockaddr_in client_name;
     socklen_t  client_name_len = sizeof(client_name);
-    pthread_t newthread;
+    // pthread_t newthread;
 
-    server_sock = startup(&port);
+    server_sock = startup(&port);//打开监听socket
     printf("httpd running on port %d\n", port);
 
     while (1)
     {
         client_sock = accept(server_sock,
                 (struct sockaddr *)&client_name,
-                &client_name_len);
+                &client_name_len);//打开连接socket
         if (client_sock == -1)
             error_die("accept");
-        /* accept_request(&client_sock); */
-        if (pthread_create(&newthread , NULL, (void *)accept_request, (void *)(intptr_t)client_sock) != 0)
-            perror("pthread_create");
+        accept_request(&client_sock); //对接收的HTTP报文处理
+        // if (pthread_create(&newthread , NULL, (void *)accept_request, (void *)(intptr_t)client_sock) != 0)
+        //     perror("pthread_create"); 
     }
 
     close(server_sock);
